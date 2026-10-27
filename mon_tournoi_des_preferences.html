@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mon grand tournoi des préférences</title>
+<style>
+:root{color-scheme:dark;--bg:#101114;--panel:#1a1c21;--panel2:#22252c;--text:#f4f5f7;--muted:#a9afbb;--line:#353944;--accent:#8db6ff;--gold:#f3c969;--green:#83d6a3}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#202632 0,#101114 55%);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:980px;margin:auto;padding:24px 16px 60px}.hero{padding:28px 0 20px}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.78rem}
+h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.05;margin:.45rem 0 1rem;letter-spacing:-.04em}h2{font-size:1.35rem;margin:0 0 12px}p{color:var(--muted);margin:.35rem 0 1rem}
+.panel{background:rgba(26,28,33,.95);border:1px solid var(--line);border-radius:18px;padding:18px;margin:16px 0;box-shadow:0 12px 32px #0002}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}.field label{font-weight:650;font-size:.95rem}.field small{color:var(--muted);font-size:.82rem}
+input,textarea,button{font:inherit}input{width:100%;background:#111318;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #8db6ff22}
+button{border:0;border-radius:11px;padding:11px 16px;font-weight:750;cursor:pointer;background:var(--accent);color:#111722}
+button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}button.danger{background:#4a2529;color:#ffdfe1;border:1px solid #744047}button:disabled{opacity:.4;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}.muted{color:var(--muted)}.progress{height:7px;background:#30333b;border-radius:99px;overflow:hidden;margin:12px 0}.progress>div{height:100%;background:var(--accent);width:0;transition:width .2s}
+.statrow{display:flex;gap:10px;flex-wrap:wrap}.stat{background:var(--panel2);padding:8px 12px;border-radius:10px;color:var(--muted)}.stat strong{color:var(--text)}
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.candidate{min-height:150px;text-align:left;background:var(--panel2);border:1px solid var(--line);color:var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;padding:18px;border-radius:16px}.candidate:hover{border-color:var(--accent);transform:translateY(-1px)}.candidate .name{font-size:clamp(1.2rem,3vw,1.7rem);font-weight:800;overflow-wrap:anywhere}.candidate .category{color:var(--muted);font-size:.85rem}.candidate .pick{font-size:.9rem;color:var(--accent);font-weight:750}
+.champion{text-align:center;padding:24px}.champion .crown{font-size:3rem}.champion .winner{font-size:clamp(2rem,7vw,4rem);font-weight:900;line-height:1.1;color:var(--gold);overflow-wrap:anywhere;margin:10px 0}
+ul{padding-left:1.25rem;color:var(--muted)}li{margin:6px 0}.hidden{display:none!important}.round-item{padding:10px 0;border-bottom:1px solid var(--line)}.round-item:last-child{border-bottom:0}.round-title{font-weight:800;color:var(--text)}.winner-tag{color:var(--green);font-weight:700}
+footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:28px}
+@media(max-width:520px){main{padding:16px 12px 40px}.panel{padding:14px}.duel{gap:8px}.candidate{padding:13px;min-height:145px}}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Mon classement personnel</div>
+    <h1>Le grand tournoi<br>de mes préférences</h1>
+    <p>Renseigne tes 20 favoris, puis choisis entre deux candidats à chaque duel. À la fin, il ne reste qu'un seul champion toutes catégories confondues.</p>
+    <div class="statrow">
+      <div class="stat"><strong id="countStat">0/20</strong> favoris remplis</div>
+      <div class="stat"><strong id="roundStat">Configuration</strong> étape</div>
+    </div>
+  </header>
+
+  <section class="panel" id="setup">
+    <h2>1. Tes 20 thèmes de départ</h2>
+    <p>Tu peux modifier les thèmes, écrire un favori par ligne et laisser les cases vides si tu ne sais pas encore. Les données sont enregistrées dans ce navigateur sur cet appareil.</p>
+    <div class="grid" id="fields"></div>
+    <div class="actions">
+      <button id="startBtn">Lancer le tournoi</button>
+      <button class="secondary" id="saveBtn">Enregistrer</button>
+      <button class="secondary" id="exportBtn">Exporter mes résultats (.txt)</button>
+      <button class="danger" id="resetBtn">Tout effacer</button>
+    </div>
+    <p id="setupMessage" role="status"></p>
+  </section>
+
+  <section class="panel hidden" id="tournament">
+    <div class="statrow">
+      <div class="stat" id="roundBadge">Manche 1</div>
+      <div class="stat" id="matchBadge">Duel 1</div>
+      <div class="stat" id="leftBadge">Candidats restants : 20</div>
+    </div>
+    <div class="progress"><div id="progressBar"></div></div>
+    <h2 id="duelTitle">Tu préfères lequel ?</h2>
+    <p id="duelPrompt">Choisis celui qui compte le plus pour toi.</p>
+    <div class="duel" id="duelOptions"></div>
+    <p class="muted" id="byeNote"></p>
+    <div class="actions">
+      <button class="secondary" id="undoBtn">Annuler le dernier choix</button>
+      <button class="secondary" id="editBtn">Modifier mes thèmes</button>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="results">
+    <div class="champion">
+      <div class="crown">🏆</div>
+      <div class="eyebrow">Ton préféré absolu</div>
+      <div class="winner" id="winnerName"></div>
+      <p id="winnerCategory"></p>
+    </div>
+    <h2>Récapitulatif du tournoi</h2>
+    <div id="history"></div>
+    <div class="actions">
+      <button id="newTournamentBtn">Recommencer avec les mêmes favoris</button>
+      <button class="secondary" id="editAfterBtn">Modifier / ajouter des favoris</button>
+      <button class="secondary" id="exportResultsBtn">Exporter le récapitulatif (.txt)</button>
+    </div>
+  </section>
+  <footer>Un choix personnel, pas un classement objectif. Tu peux revenir plus tard et modifier tes favoris.</footer>
+</main>
+<script>
+const DEFAULTS = [
+["Film préféré","Ex. 300"],["Série préférée","Ex. The Mentalist"],["Jeu vidéo préféré","Ex. Zelda"],
+["Plat préféré","Ex. burger"],["Boisson préférée","Ex. Fuze Tea"],["Chanson / morceau préféré","Ex. The Weeknd — musique"],
+["Artiste ou groupe préféré","Ex. The Weeknd"],["Sport préféré","Ex. tennis"],["Pays préféré","Ex. France"],
+["Voiture préférée","Ex. Alpine A110"],["Activité préférée","Ex. conduire"],["Endroit préféré","Ex. ma voiture"],
+["Livre / BD / manga préféré","Ton titre préféré"],["Application / technologie préférée","Ton application ou appareil préféré"],
+["Personne connue / personnalité préférée","Acteur, créateur, sportif…"],["Animal préféré","Ton animal préféré"],
+["Loisir préféré","Ce que tu aimes faire"],["Voyage / destination préférée","Un lieu ou une destination"],
+["Souvenir / moment préféré","Un moment marquant"],["Objet que tu préfères posséder","Un objet qui compte pour toi"]
+];
+const $ = id => document.getElementById(id);
+let entries = [];
+let rounds = [];
+let roundIndex = 0;
+let matchIndex = 0;
+let history = [];
+let snapshots = [];
+
+function loadSaved(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("preferencesTournamentV1")||"null");
+    if(saved && Array.isArray(saved.entries) && saved.entries.length===20) entries=saved.entries;
+    else entries=DEFAULTS.map(([category])=>({category,value:""}));
+  }catch(e){entries=DEFAULTS.map(([category])=>({category,value:""}));}
+}
+function persist(){
+  localStorage.setItem("preferencesTournamentV1",JSON.stringify({entries}));
+}
+function renderFields(){
+  const root=$("fields");root.innerHTML="";
+  entries.forEach((entry,i)=>{
+    const wrap=document.createElement("div");wrap.className="field";
+    const label=document.createElement("label");label.htmlFor="cat"+i;label.textContent=(i+1)+". Thème";
+    const cat=document.createElement("input");cat.id="cat"+i;cat.value=entry.category;cat.setAttribute("aria-label","Nom du thème "+(i+1));cat.placeholder="Nom du thème";
+    cat.addEventListener("input",()=>{entries[i].category=cat.value;updateCount();});
+    const val=document.createElement("input");val.id="fav"+i;val.value=entry.value;val.placeholder=DEFAULTS[i][1];val.setAttribute("aria-label","Favori pour "+entry.category);
+    val.addEventListener("input",()=>{entries[i].value=val.value;updateCount();});
+    wrap.append(label,cat,val);root.append(wrap);
+  });updateCount();
+}
+function updateCount(){
+  const n=entries.filter(e=>e.value.trim()).length;$("countStat").textContent=n+"/20";
+  $("startBtn").disabled=n<2;
+}
+function save(){
+  for(let i=0;i<20;i++){
+    const c=$("cat"+i),v=$("fav"+i);
+    if(c)entries[i].category=c.value.trim()||DEFAULTS[i][0];
+    if(v)entries[i].value=v.value.trim();
+  }
+  persist();updateCount();$("setupMessage").textContent="Enregistré sur cet appareil.";
+}
+function getCandidates(){
+  return entries.map((e,i)=>({name:e.value.trim(),category:e.category.trim()||DEFAULTS[i][0],index:i}))
+    .filter(e=>e.name);
+}
+function startTournament(){
+  save();
+  let candidates=getCandidates();
+  if(candidates.length<2){$("setupMessage").textContent="Renseigne au moins 2 favoris pour commencer.";return;}
+  rounds=[];history=[];snapshots=[];roundIndex=0;matchIndex=0;
+  rounds.push(shuffle(candidates));
+  $("setup").classList.add("hidden");$("results").classList.add("hidden");$("tournament").classList.remove("hidden");
+  $("roundStat").textContent="En cours";renderMatch();
+}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function renderMatch(){
+  let current=rounds[roundIndex];
+  if(current.length===1){showResults(current[0]);return;}
+  let totalMatches=Math.floor(current.length/2);
+  if(matchIndex>=totalMatches){
+    const next=rounds[roundIndex+1]||[];
+    if(next.length===1){showResults(next[0]);return;}
+    rounds.push(next);roundIndex++;matchIndex=0;renderMatch();return;
+  }
+  const a=current[matchIndex*2],b=current[matchIndex*2+1];
+  $("roundBadge").textContent="Manche "+(roundIndex+1)+" · "+current.length+" candidats";
+  $("matchBadge").textContent="Duel "+(matchIndex+1)+" sur "+totalMatches;
+  $("leftBadge").textContent="À départager : "+current.length;
+  $("duelTitle").textContent="Tu préfères lequel ?";
+  $("duelPrompt").textContent="Choisis instinctivement celui que tu préfères vraiment.";
+  $("byeNote").textContent=current.length%2===1 && matchIndex===totalMatches-1
+    ?"Un candidat passe automatiquement à la manche suivante pour équilibrer le tournoi."
+    :"";
+  const opts=$("duelOptions");opts.innerHTML="";
+  [a,b].forEach((c,i)=>{
+    const btn=document.createElement("button");btn.className="candidate";
+    btn.innerHTML='<span class="category"></span><span class="name"></span><span class="pick">Je choisis ce favori →</span>';
+    btn.querySelector(".category").textContent=c.category;
+    btn.querySelector(".name").textContent=c.name;
+    btn.addEventListener("click",()=>choose(c,a,b));
+    opts.append(btn);
+  });
+  const done=history.reduce((s,h)=>s+h.matches.length,0)+matchIndex;
+  const total=Math.max(1,getCandidates().length-1);
+  $("progressBar").style.width=Math.min(100,done/total*100)+"%";
+  $("undoBtn").disabled=snapshots.length===0;
+}
+function choose(winner,a,b){
+  snapshots.push({roundIndex,matchIndex,rounds:JSON.parse(JSON.stringify(rounds)),history:JSON.parse(JSON.stringify(history))});
+  const current=rounds[roundIndex];
+  if(!history[roundIndex])history[roundIndex]={round:roundIndex+1,matches:[]};
+  history[roundIndex].matches.push({a,b,winner});
+  if(!rounds[roundIndex+1])rounds[roundIndex+1]=[];
+  rounds[roundIndex+1].push(winner);
+  matchIndex++;
+  renderMatch();
+}
+function showResults(winner){
+  $("tournament").classList.add("hidden");$("results").classList.remove("hidden");
+  $("winnerName").textContent=winner.name;$("winnerCategory").textContent="Catégorie : "+winner.category;
+  const root=$("history");root.innerHTML="";
+  history.forEach(r=>{
+    if(!r.matches.length)return;
+    const block=document.createElement("div");block.className="round-item";
+    const title=document.createElement("div");title.className="round-title";title.textContent="Manche "+r.round;
+    block.append(title);
+    r.matches.forEach(m=>{
+      const p=document.createElement("p");p.style.margin=".5rem 0";
+      p.textContent=m.a.name+" ("+m.a.category+")  vs  "+m.b.name+" ("+m.b.category+")";
+      const w=document.createElement("div");w.className="winner-tag";w.textContent="Gagnant : "+m.winner.name;
+      block.append(p,w);
+    });
+    root.append(block);
+  });
+  $("progressBar").style.width="100%";$("roundStat").textContent="Terminé";
+}
+function undo(){
+  if(!snapshots.length)return;
+  const s=snapshots.pop();roundIndex=s.roundIndex;matchIndex=s.matchIndex;rounds=s.rounds;history=s.history;
+  $("results").classList.add("hidden");$("tournament").classList.remove("hidden");renderMatch();
+}
+function edit(){
+  $("tournament").classList.add("hidden");$("results").classList.add("hidden");$("setup").classList.remove("hidden");renderFields();$("roundStat").textContent="Configuration";
+}
+function exportText(){
+  let lines=["MON GRAND TOURNOI DES PRÉFÉRENCES",""];
+  if($("winnerName").textContent){lines.push("PRÉFÉRÉ ABSOLU : "+$("winnerName").textContent+" — "+$("winnerCategory").textContent,"");}
+  lines.push("MES FAVORIS DE DÉPART");
+  entries.forEach((e,i)=>{if(e.value.trim())lines.push((i+1)+". "+e.category+" : "+e.value);});
+  if(history.length){lines.push("","RÉCAPITULATIF DES MANCHES");history.forEach(r=>{if(!r.matches.length)return;lines.push("","Manche "+r.round);r.matches.forEach(m=>lines.push(m.a.name+" vs "+m.b.name+" → gagnant : "+m.winner.name));});}
+  const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="mon-tournoi-des-preferences.txt";a.click();URL.revokeObjectURL(url);
+}
+$("startBtn").addEventListener("click",startTournament);
+$("saveBtn").addEventListener("click",save);
+$("exportBtn").addEventListener("click",()=>{save();exportText();});
+$("resetBtn").addEventListener("click",()=>{if(confirm("Effacer les 20 thèmes et tous les favoris enregistrés ?")){entries=DEFAULTS.map(([category])=>({category,value:""}));persist();renderFields();$("setupMessage").textContent="Tout a été effacé."; }});
+$("undoBtn").addEventListener("click",undo);
+$("editBtn").addEventListener("click",edit);
+$("editAfterBtn").addEventListener("click",edit);
+$("newTournamentBtn").addEventListener("click",startTournament);
+$("exportResultsBtn").addEventListener("click",exportText);
+loadSaved();renderFields();
+</script>
+</body>
+</html>
